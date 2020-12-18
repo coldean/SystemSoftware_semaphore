@@ -41,7 +41,8 @@ int main() {
         fflush(stdout);
         fflush(stdin);
 
-        memcpy(shmaddr, &str,  sizeof(str));
+        memset(shmaddr, 0x00, sizeof(shmaddr)); // 내용 초기화
+        memcpy(shmaddr, &str, sizeof(str));
         sem_post(req);
 
         sem_wait(res);
