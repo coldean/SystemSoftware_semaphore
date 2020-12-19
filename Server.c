@@ -11,37 +11,90 @@
 #include <fcntl.h>
 
 #define MAX_SHM_SIZE 512
+#define CLIENT_NUM_MAX 8192
 
 void signalHandler(int signum);
-char REQ_NAME[] = "fuckone";
-char RES_NAME[] = "fucktwo";
+char SERVER_SEM[] = "req_sem";
+char CLIENT_SEM[] = "res_sem_";
 
-key_t mykey = 0;
+typedef struct __ClientInfo {
+    int pid;
+    int isRequested;
+} ClientInfo;
+
+ClientInfo *pClientInfo;
+
+key_t clientKey = 0;
+key_t ci = 0;
 int shmid = 0;
 int *shmaddr = NULL;
+int ciid = 0;
+int *ciaddr = NULL;
 sem_t *req, *res;
 
 int main() {
-    mykey = ftok("mykey", 1);
-    shmid = shmget(1234, MAX_SHM_SIZE, IPC_CREAT | 0666);
-    shmaddr = shmat(shmid, NULL, 0);
+    clientKey = ftok("mykey", 1);
+    ci = ftok("ci_set", 0);
 
-    sem_unlink(REQ_NAME);   // 시작 전에 이거 안써주면 세마포어가
-    sem_unlink(RES_NAME);   // 존재할경우 이미 있는 세마포어 씀
+    signal(SIGINT, signalHandler);
 
-    req = sem_open(REQ_NAME, O_CREAT | O_EXCL, 0644, 0);
-    res = sem_open(RES_NAME, O_CREAT | O_EXCL, 0644, 1);
+    ciid = shmget(ci, CLIENT_NUM_MAX, IPC_CREAT | 0666);
+    ciaddr = shmat(ciid, NULL, 0);
+
+    req = sem_open(SERVER_SEM, O_CREAT | O_EXCL, 0644, 0);
+
+
+    int addrcount = 0;
+
+    int clientpid = 0;
+    int pidIndex = 0;
 
     int count = 0;
     while (1) {
+
         sem_wait(req);
+        printf("got req\n");
+
+        char clientSeg[15] = {
+            '\0',
+        };
+        char clientSem[15] = {
+            '\0',
+        };
+
+        while (1) {
+            ClientInfo check;
+            memcpy(&check, ciaddr + addrcount, 8);
+
+            if (check.isRequested == 1) {
+                clientpid = check.pid;
+                break;
+            }
+
+            if (addrcount == CLIENT_NUM_MAX) {
+                printf("Error! no request\n");
+            }
+            addrcount += 8;
+        }
+        printf("client pid : %d", clientpid);
+
+        pidIndex = clientpid % 1000;
+        sprintf(clientSeg, "%s%d", CLIENT_SEM, pidIndex);
+        sprintf(clientSem, "%s%d", SERVER_SEM, pidIndex);
+
+        clientKey = ftok(clientSeg, 0);
+        shmid = shmget(clientKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+        shmaddr = shmat(shmid, NULL, 0);
+
+        res = sem_open(clientSem, 0, 0644, 1);
+
         count++;
 
         char str[50] = {
             '\0',
         };
         memcpy(&str, shmaddr, sizeof(str));
-        printf("from client : %s\n", str);
+        printf("from client : %s, %d\n", str, clientpid);
 
         memset(shmaddr, 0x00, sizeof(shmaddr));
         memcpy(shmaddr, &count, sizeof(int));
@@ -57,8 +110,8 @@ void signalHandler(int signum) {
         sem_close(req);
         sem_close(res);
 
-        sem_unlink(REQ_NAME);
-        sem_unlink(RES_NAME);
+        sem_unlink(SERVER_SEM);
+        sem_unlink(CLIENT_SEM);
 
         exit(0);
     }
