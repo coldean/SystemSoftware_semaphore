@@ -121,6 +121,11 @@ int main(void) {
         numArg = lpcRequest->numArg;
         lpcArgs = lpcRequest->lpcArgs;
 
+		///////////////// 이게 맞나?????????
+        // sprintf(clientSem, "%s%ld", REQ_SEM_, clientPid % 1000);
+
+        printf("\nclientSem : %s\n", clientSem);
+
         printf("from client : %ld, %d\n", clientPid, ci_clientpid);
 
         int fd, size, a;
