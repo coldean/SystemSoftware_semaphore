@@ -56,12 +56,17 @@ void Init(void) {
     serverKey = __makeKeyByName(serverSeg);
     ci = ftok("ci_set", 0);
 
+
+
     clientShmid = shmget(clientKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    // shmctl(clientShmid, IPC_RMID, NULL);
     clientShmaddr = shmat(clientShmid, NULL, 0);
+
     serverShmid = shmget(serverKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    // shmctl(serverShmid, IPC_RMID, NULL);
     serverShmaddr = shmat(serverShmid, NULL, 0);
 
-    ciid = shmget(ci, CLIENT_NUM_MAX, IPC_CREAT | 0666);
+    ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0666);
     ciaddr = shmat(ciid, NULL, 0);
 
     reqSem = sem_open(REQ_SEM, 0, 0644, 0);
@@ -70,13 +75,15 @@ void Init(void) {
 
 int OpenFile(char *path, int flags) {
     Init();
+    printf("open init good \n");
 
     long cpid = getpid();
 
     LpcRequest lpcRequest;
     LpcArg lpcArg0, lpcArg1;
 
-    memset(&lpcRequest, 0x00, sizeof(lpcRequest));
+    memset(&lpcRequest, 0x00, sizeof(LpcRequest));
+    printf("one good\n");
 
     lpcArg0.argSize = sizeof(path);
     strcpy(lpcArg0.argData, path);
@@ -90,14 +97,24 @@ int OpenFile(char *path, int flags) {
     lpcRequest.lpcArgs[0] = lpcArg0;
     lpcRequest.lpcArgs[1] = lpcArg1;
 
+    printf("two good\n");
     memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
+    printf("memset good\n");
     memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    printf("memcpy good\n");
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
+    ClientInfo cli;
+    cli.pid = getpid();
+    cli.isRequested = 1;
 
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    printf("malloc good\n");
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    memcpy(ciaddr + 8 * pidIndex, &cli, sizeof(ClientInfo));
+
+    printf("memcpy2 good\n");
 
     sem_post(reqSem);
 
@@ -114,11 +131,12 @@ int OpenFile(char *path, int flags) {
 
 int ReadFile(int fd, void *pBuf, int size) {
     Init();
+    printf("read init good \n");
 
     LpcRequest lpcRequest;
     LpcArg lpcArg0, lpcArg1;
 
-    memset(&lpcRequest, 0x00, sizeof(lpcRequest));
+    memset(&lpcRequest, 0x00, sizeof(LpcRequest));
 
     lpcArg0.argSize = 4;
     lpcArg0.argData[0] = fd;
@@ -134,13 +152,17 @@ int ReadFile(int fd, void *pBuf, int size) {
     lpcRequest.lpcArgs[1] = lpcArg1;
 
     memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
+    printf("1 good \n");
+
     memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    printf("2 good \n");
 
     ClientInfo *cli = malloc(sizeof(ClientInfo));
     cli->pid = getpid();
     cli->isRequested = 1;
 
     memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    printf("3 good \n");
 
     sem_post(reqSem);
 
@@ -162,7 +184,7 @@ int WriteFile(int fd, void *pBuf, int size) {
     LpcRequest lpcRequest;
     LpcArg lpcArg0, lpcArg1, lpcArg2;
 
-    memset(&lpcRequest, 0x00, sizeof(lpcRequest));
+    memset(&lpcRequest, 0x00, sizeof(LpcRequest));
 
     lpcArg0.argSize = 4;
     lpcArg0.argData[0] = fd;
