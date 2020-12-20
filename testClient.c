@@ -99,7 +99,8 @@ void signalHandler(int signum) {
         sem_close(req);
         sem_close(res);
 
-
+        sem_unlink(SERVER_SEM);
+        sem_unlink(clientSem);
 
         exit(0);
     }

@@ -62,6 +62,7 @@ int main() {
             '\0',
         };
 
+        addrcount = 0;
         while (1) {
             ClientInfo check;
             memcpy(&check, ciaddr + addrcount, 8);
@@ -86,6 +87,11 @@ int main() {
         shmid = shmget(clientKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
         shmaddr = shmat(shmid, NULL, 0);
 
+        ClientInfo initCi;      // isrequest 0으로 초기화
+        initCi.pid = clientpid;
+        initCi.isRequested = 0;
+        memcpy(ciaddr + addrcount, &initCi, 8);
+
         res = sem_open(clientSem, 0, 0644, 1);
 
         count++;
@@ -97,7 +103,9 @@ int main() {
         printf("from client : %s, %d\n", str, clientpid);
 
         memset(shmaddr, 0x00, sizeof(shmaddr));
+        printf("memset seccess\n");
         memcpy(shmaddr, &count, sizeof(int));
+        printf("memcpy success\n");
         sem_post(res);
     }
 }
