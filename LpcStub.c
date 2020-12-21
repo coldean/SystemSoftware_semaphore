@@ -48,7 +48,7 @@ void Init(void)
     printf("serverSeg : %s\n", serverSeg);
     responseKey = __makeKeyByName(serverSeg);
 
-    responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0777);
     printf("get good\n");
     // shmctl(responseShmid, IPC_RMID, NULL);
     responseShmaddr = shmat(responseShmid, NULL, 0);

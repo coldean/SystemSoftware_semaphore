@@ -58,19 +58,19 @@ void Init(void) {
     responseKey = __makeKeyByName(responseSeg);
     ci = __makeKeyByName("ci_set");
 
-    requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0777);
     // shmctl(requestShmid, IPC_RMID, NULL);
     requestShmaddr = shmat(requestShmid, NULL, 0);
 
-    responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0777);
     // shmctl(responseShmid, IPC_RMID, NULL);
     responseShmaddr = shmat(responseShmid, NULL, 0);
 
-    ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0666);
+    ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0777);
     pClientInfo = shmat(ciid, NULL, 0);
 
-    reqSem = sem_open(REQ_SEM, 0, 0644, 0);
-    resSem = sem_open(responseSem, O_CREAT, 0644, 0);
+    reqSem = sem_open(REQ_SEM, 0, 0777, 0);
+    resSem = sem_open(responseSem, O_CREAT, 0777, 0);
 }
 
 int OpenFile(char *path, int flags) {
@@ -125,6 +125,9 @@ int OpenFile(char *path, int flags) {
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
+
+    shmdt(requestShmaddr);
+    shmdt(responseShmaddr);
 
     sem_close(resSem);
     sem_unlink(responseSem);
@@ -181,6 +184,9 @@ int ReadFile(int fd, void *pBuf, int size) {
 
     strcpy(pBuf, lpcResponse.responseData);
 
+    shmdt(requestShmaddr);
+    shmdt(responseShmaddr);
+
     sem_close(resSem);
     sem_unlink(responseSem);
 
@@ -230,6 +236,9 @@ int WriteFile(int fd, void *pBuf, int size) {
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
+
+    shmdt(requestShmaddr);
+    shmdt(responseShmaddr);
 
     sem_close(resSem);
     sem_unlink(responseSem);
@@ -283,6 +292,9 @@ off_t SeekFile(int fd, off_t offset, int whence) {
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
     int a = atoi(lpcResponse.responseData);
 
+    shmdt(requestShmaddr);
+    shmdt(responseShmaddr);
+
     sem_close(resSem);
     sem_unlink(responseSem);
 
@@ -325,6 +337,9 @@ int CloseFile(int fd) {
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
+
+    shmdt(requestShmaddr);
+    shmdt(responseShmaddr);
 
     sem_close(resSem);
     sem_unlink(responseSem);
@@ -372,6 +387,9 @@ int MakeDirectory(char *path, int mode) {
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
 
+    shmdt(requestShmaddr);
+    shmdt(responseShmaddr);
+
     sem_close(resSem);
     sem_unlink(responseSem);
 
@@ -413,6 +431,9 @@ int RemoveDirectory(char *path) {
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
+
+    shmdt(requestShmaddr);
+    shmdt(responseShmaddr);
 
     sem_close(resSem);
     sem_unlink(responseSem);

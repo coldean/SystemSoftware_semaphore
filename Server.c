@@ -47,13 +47,14 @@ int main(void) {
     ci = __makeKeyByName("ci_set");
 
     signal(SIGINT, signalHandler);
+    signal(SIGSEGV, signalHandler);
 
-    ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0666);
+    ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0777);
     pClientInfo = shmat(ciid, NULL, 0);
     printf("ci success\n");
     memset(pClientInfo, 0x00, CLIENT_NUM_MAX * 8);
     printf("ci memset ok\n");
-    reqSem = sem_open(REQ_SEM_, O_CREAT, 0644, 0);
+    reqSem = sem_open(REQ_SEM_, O_CREAT, 0777, 0);
     printf("reqsem made ok\n");
     int addrcount = 0;
 
@@ -102,9 +103,9 @@ int main(void) {
 
         requestKey = __makeKeyByName(requestSeg);
         responseKey = __makeKeyByName(responseSeg);
-        requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+        requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0777);
         requestShmaddr = shmat(requestShmid, NULL, 0);
-        responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+        responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0777);
         responseShmaddr = shmat(responseShmid, NULL, 0);
 
         // ClientInfo initCi; // isrequest 0으로 초기화
@@ -114,7 +115,7 @@ int main(void) {
         pClientInfo[addrcount].isRequested = 0;
 
         resSem =
-            sem_open(responseSem, O_CREAT, 0644, 0); // client에서 받는 과정
+            sem_open(responseSem, O_CREAT, 0777, 0); // client에서 받는 과정
 
         memset(lpcRequest, 0x00, sizeof(LpcRequest)); // 이전 정보 초기화
         // count++;
@@ -171,6 +172,7 @@ int main(void) {
         // printf("memcpy success\n");
         printf("before semPost\n");
         sem_post(resSem);
+        sem_close(resSem);
         printf("sempost good\n");
     }
 
@@ -190,5 +192,18 @@ void signalHandler(int signum) {
         sem_unlink(responseSem);
 
         exit(0);
+    }
+    if (signum == SIGSEGV){
+        shmdt(requestShmaddr);
+        shmctl(requestShmid, IPC_RMID, NULL);
+        shmdt(responseShmaddr);
+        shmctl(responseShmid, IPC_RMID, NULL);
+
+        sem_close(reqSem);
+        sem_close(resSem);
+
+        sem_unlink(REQ_SEM_);
+        sem_unlink(responseSem);
+        signal(signum, SIG_DFL);
     }
 }
