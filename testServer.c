@@ -27,13 +27,13 @@ typedef struct __ClientInfo {
 
 ClientInfo *pClientInfo;
 
-key_t clientKey = 0;
-key_t serverKey = 0;
+key_t requestKey = 0;
+key_t responseKey = 0;
 key_t ci = 0;
-int clientShmid = 0;
-int *clientShmaddr = NULL;
-int serverShmid = 0;
-int *serverShmaddr = NULL;
+int requestShmid = 0;
+int *requestShmaddr = NULL;
+int responseShmid = 0;
+int *responseShmaddr = NULL;
 int ciid = 0;
 int *ciaddr = NULL;
 sem_t *reqSem, *resSem;
@@ -93,12 +93,12 @@ int main() {
         sprintf(clientSeg, "%s%d", REQ_SEG, pidIndex);
         sprintf(clientSem, "%s%d", REQ_SEM, pidIndex);
 
-        clientKey = ftok(clientSeg, 0);
-        serverKey = ftok(serverSeg, 0);
-        clientShmid = shmget(clientKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
-        clientShmaddr = shmat(clientShmid, NULL, 0);
-        serverShmid = shmget(serverKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
-        serverShmaddr = shmat(serverShmid, NULL, 0);
+        requestKey = ftok(clientSeg, 0);
+        responseKey = ftok(serverSeg, 0);
+        requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+        requestShmaddr = shmat(requestShmid, NULL, 0);
+        responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+        responseShmaddr = shmat(responseShmid, NULL, 0);
 
         ClientInfo initCi;      // isrequest 0으로 초기화
         initCi.pid = clientpid;
@@ -112,12 +112,12 @@ int main() {
         char str[50] = {
             '\0',
         };
-        memcpy(&str, clientShmaddr, sizeof(str));
+        memcpy(&str, requestShmaddr, sizeof(str));
         printf("from client : %s, %d\n", str, clientpid);
 
-        memset(serverShmaddr, 0x00, sizeof(clientShmaddr));
+        memset(responseShmaddr, 0x00, sizeof(requestShmaddr));
         printf("memset seccess\n");
-        memcpy(serverShmaddr, &count, sizeof(int));
+        memcpy(responseShmaddr, &count, sizeof(int));
         printf("memcpy success\n");
         sem_post(resSem);
     }
@@ -125,10 +125,10 @@ int main() {
 
 void signalHandler(int signum) {
     if (signum == SIGINT) {
-        shmdt(clientShmaddr);
-        shmctl(clientShmid, IPC_RMID, NULL);
-        shmdt(serverShmaddr);
-        shmctl(serverShmid, IPC_RMID, NULL);
+        shmdt(requestShmaddr);
+        shmctl(requestShmid, IPC_RMID, NULL);
+        shmdt(responseShmaddr);
+        shmctl(responseShmid, IPC_RMID, NULL);
 
         sem_close(reqSem);
         sem_close(resSem);

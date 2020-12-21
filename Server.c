@@ -21,13 +21,13 @@ char RES_SEM_[] = "res_sem_";
 char REQ_SEG_[] = "req_seg_";
 char RES_SEG_[] = "res_seg_";
 
-key_t clientKey = 0;
-key_t serverKey = 0;
+key_t requestKey = 0;
+key_t responseKey = 0;
 key_t ci = 0;
-int clientShmid = 0;
-int *clientShmaddr = NULL;
-int serverShmid = 0;
-int *serverShmaddr = NULL;
+int requestShmid = 0;
+int *requestShmaddr = NULL;
+int responseShmid = 0;
+int *responseShmaddr = NULL;
 int ciid = 0;
 int *ciaddr = NULL;
 sem_t *reqSem, *resSem;
@@ -47,10 +47,11 @@ int main(void) {
 
     ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0666);
     ciaddr = shmat(ciid, NULL, 0);
+    printf("ci success\n");
     memset(ciaddr, 0x00, CLIENT_NUM_MAX * 8);
-
+    printf("ci memset ok\n");
     reqSem = sem_open(REQ_SEM_, O_CREAT , 0644, 0);
-
+    printf("reqsem made ok\n");
     int addrcount = 0;
 
     int ci_clientpid = 0;
@@ -62,13 +63,13 @@ int main(void) {
         sem_wait(reqSem);
         printf("got req\n");
 
-        char serverSeg[15] = {
+        char responseSeg[15] = {
             '\0',
         };
-        char clientSeg[15] = {
+        char requestSeg[15] = {
             '\0',
         };
-        char clientSem[15] = {
+        char responseSem[15] = {
             '\0',
         };
 
@@ -76,6 +77,7 @@ int main(void) {
         while (1) {
             ClientInfo check;
             memcpy(&check, ciaddr + addrcount, 8);
+            printf("memcpy good, %d\n", addrcount);
 
             if (check.isRequested == 1) {
                 ci_clientpid = check.pid;
@@ -91,23 +93,23 @@ int main(void) {
         printf("client pid : %d", ci_clientpid);
 
         pidIndex = ci_clientpid % 1000;
-        sprintf(serverSeg, "%s%d", RES_SEG_, pidIndex);
-        sprintf(clientSeg, "%s%d", REQ_SEG_, pidIndex);
-        sprintf(clientSem, "%s%d", REQ_SEM_, pidIndex);
+        sprintf(responseSeg, "%s%d", RES_SEG_, pidIndex);
+        sprintf(requestSeg, "%s%d", REQ_SEG_, pidIndex);
+        sprintf(responseSem, "%s%d", RES_SEM_, pidIndex);
 
-        clientKey = __makeKeyByName(clientSeg);
-        serverKey = __makeKeyByName(serverSeg);
-        clientShmid = shmget(clientKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
-        clientShmaddr = shmat(clientShmid, NULL, 0);
-        serverShmid = shmget(serverKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
-        serverShmaddr = shmat(serverShmid, NULL, 0);
+        requestKey = __makeKeyByName(requestSeg);
+        responseKey = __makeKeyByName(responseSeg);
+        requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+        requestShmaddr = shmat(requestShmid, NULL, 0);
+        responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+        responseShmaddr = shmat(responseShmid, NULL, 0);
 
         ClientInfo initCi; // isrequest 0으로 초기화
         initCi.pid = ci_clientpid;
         initCi.isRequested = 0;
         memcpy(ciaddr + addrcount, &initCi, 8);
 
-        resSem = sem_open(clientSem, O_CREAT, 0644, 0);	// client에서 받는 과정
+        resSem = sem_open(responseSem, O_CREAT, 0644, 0);	// client에서 받는 과정
 
         memset(lpcRequest, 0x00, sizeof(LpcRequest));	// 이전 정보 초기화
         // count++;
@@ -115,7 +117,7 @@ int main(void) {
         // char str[50] = {
         //     '\0',
         // };
-        memcpy(lpcRequest, clientShmaddr, sizeof(LpcRequest));
+        memcpy(lpcRequest, requestShmaddr, sizeof(LpcRequest));
         clientPid = lpcRequest->pid;
         lpcService = lpcRequest->service;
         numArg = lpcRequest->numArg;
@@ -171,10 +173,10 @@ int main(void) {
 }
 void signalHandler(int signum) {
     if (signum == SIGINT) {
-        shmdt(clientShmaddr);
-        shmctl(clientShmid, IPC_RMID, NULL);
-        shmdt(serverShmaddr);
-        shmctl(serverShmid, IPC_RMID, NULL);
+        shmdt(requestShmaddr);
+        shmctl(requestShmid, IPC_RMID, NULL);
+        shmdt(responseShmaddr);
+        shmctl(responseShmid, IPC_RMID, NULL);
 
         sem_close(reqSem);
         sem_close(resSem);

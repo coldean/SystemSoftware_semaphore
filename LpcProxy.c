@@ -21,13 +21,13 @@ char RES_SEM[] = "res_sem_";
 char REQ_SEG[] = "req_seg_";
 char RES_SEG[] = "res_seg_";
 
-key_t clientKey;
-key_t serverKey;
+key_t requestKey;
+key_t responseKey;
 key_t ci;
-int clientShmid;
-int *clientShmaddr;
-int serverShmid;
-int *serverShmaddr;
+int requestShmid;
+int *requestShmaddr;
+int responseShmid;
+int *responseShmaddr;
 int ciid;
 int *ciaddr;
 sem_t *reqSem, *resSem;
@@ -35,42 +35,42 @@ sem_t *reqSem, *resSem;
 int pidIndex;
 
 void Init(void) {
-    char serverSeg[15] = {
+    char responseSeg[15] = {
         '\0',
     };
-    char clientSeg[15] = {
+    char requestSeg[15] = {
         '\0',
     };
-    char clientSem[15] = {
+    char responseSem[15] = {
         '\0',
     };
     int pid = getpid();
     pidIndex = pid % 1000;
 
-    sprintf(serverSeg, "%s%d", RES_SEG, pidIndex);
-    sprintf(clientSeg, "%s%d", REQ_SEG, pidIndex);
-    sprintf(clientSem, "%s%d", REQ_SEM, pidIndex);
+    sprintf(responseSeg, "%s%d", RES_SEG, pidIndex);
+    sprintf(requestSeg, "%s%d", REQ_SEG, pidIndex);
+    sprintf(responseSem, "%s%d", RES_SEM, pidIndex);
 
-    printf("%s\n", clientSeg);
-    clientKey = __makeKeyByName(clientSeg);
-    serverKey = __makeKeyByName(serverSeg);
+    printf("requestSeg : %s\n", requestSeg);
+    requestKey = __makeKeyByName(requestSeg);
+    responseKey = __makeKeyByName(responseSeg);
     ci = ftok("ci_set", 0);
 
 
 
-    clientShmid = shmget(clientKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
-    // shmctl(clientShmid, IPC_RMID, NULL);
-    clientShmaddr = shmat(clientShmid, NULL, 0);
+    requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    // shmctl(requestShmid, IPC_RMID, NULL);
+    requestShmaddr = shmat(requestShmid, NULL, 0);
 
-    serverShmid = shmget(serverKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
-    // shmctl(serverShmid, IPC_RMID, NULL);
-    serverShmaddr = shmat(serverShmid, NULL, 0);
+    responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    // shmctl(responseShmid, IPC_RMID, NULL);
+    responseShmaddr = shmat(responseShmid, NULL, 0);
 
     ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0666);
     ciaddr = shmat(ciid, NULL, 0);
 
     reqSem = sem_open(REQ_SEM, 0, 0644, 0);
-    resSem = sem_open(clientSem, O_CREAT, 0644, 0);
+    resSem = sem_open(responseSem, O_CREAT, 0644, 0);
 }
 
 int OpenFile(char *path, int flags) {
@@ -98,21 +98,21 @@ int OpenFile(char *path, int flags) {
     lpcRequest.lpcArgs[1] = lpcArg1;
 
     printf("two good\n");
-    memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
+    memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
     printf("memset good\n");
-    memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
     printf("memcpy good\n");
 
-    // ClientInfo *cli = malloc(sizeof(ClientInfo));
-    // cli->pid = getpid();
-    // cli->isRequested = 1;
-    ClientInfo cli;
-    cli.pid = getpid();
-    cli.isRequested = 1;
+    ClientInfo *cli = malloc(sizeof(ClientInfo));
+    cli->pid = getpid();
+    cli->isRequested = 1;
+    // ClientInfo cli;
+    // cli.pid = getpid();
+    // cli.isRequested = 1;
 
     printf("malloc good\n");
-    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
-    memcpy(ciaddr + 8 * pidIndex, &cli, sizeof(ClientInfo));
+    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, &cli, sizeof(ClientInfo));
 
     printf("memcpy2 good\n");
 
@@ -123,7 +123,7 @@ int OpenFile(char *path, int flags) {
     LpcResponse lpcResponse;
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
-    memcpy(&lpcResponse, serverShmaddr, sizeof(LpcResponse));
+    memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
 
     int a = atoi(lpcResponse.responseData);
     return a;
@@ -151,10 +151,10 @@ int ReadFile(int fd, void *pBuf, int size) {
     lpcRequest.lpcArgs[0] = lpcArg0;
     lpcRequest.lpcArgs[1] = lpcArg1;
 
-    memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
+    memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
     printf("1 good \n");
 
-    memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
     printf("2 good \n");
 
     ClientInfo *cli = malloc(sizeof(ClientInfo));
@@ -171,7 +171,7 @@ int ReadFile(int fd, void *pBuf, int size) {
     LpcResponse lpcResponse;
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
-    memcpy(&lpcResponse, serverShmaddr, sizeof(LpcResponse));
+    memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
 
     strcpy(pBuf, lpcResponse.responseData);
 
@@ -202,8 +202,8 @@ int WriteFile(int fd, void *pBuf, int size) {
     lpcRequest.lpcArgs[1] = lpcArg1;
     lpcRequest.lpcArgs[2] = lpcArg2;
 
-    memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
-    memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
+    memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
     ClientInfo *cli = malloc(sizeof(ClientInfo));
     cli->pid = getpid();
@@ -218,7 +218,7 @@ int WriteFile(int fd, void *pBuf, int size) {
     LpcResponse lpcResponse;
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
-    memcpy(&lpcResponse, serverShmaddr, sizeof(LpcResponse));
+    memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
     return atoi(lpcResponse.responseData);
 }
 
@@ -247,8 +247,8 @@ off_t SeekFile(int fd, off_t offset, int whence) {
     lpcRequest.lpcArgs[1] = lpcArg1;
     lpcRequest.lpcArgs[2] = lpcArg2;
 
-    memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
-    memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
+    memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
     ClientInfo *cli = malloc(sizeof(ClientInfo));
     cli->pid = getpid();
@@ -263,7 +263,7 @@ off_t SeekFile(int fd, off_t offset, int whence) {
     LpcResponse lpcResponse;
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
-    memcpy(&lpcResponse, serverShmaddr, sizeof(LpcResponse));
+    memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
     int a = atoi(lpcResponse.responseData);
     return (off_t)a;
 }
@@ -285,8 +285,8 @@ int CloseFile(int fd) {
     lpcRequest.numArg = 1;
     lpcRequest.lpcArgs[0] = lpcArg0;
 
-    memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
-    memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
+    memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
     ClientInfo *cli = malloc(sizeof(ClientInfo));
     cli->pid = getpid();
@@ -301,7 +301,7 @@ int CloseFile(int fd) {
     LpcResponse lpcResponse;
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
-    memcpy(&lpcResponse, serverShmaddr, sizeof(LpcResponse));
+    memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
 
     return atoi(lpcResponse.responseData);
 }
@@ -326,8 +326,8 @@ int MakeDirectory(char *path, int mode) {
     lpcRequest.lpcArgs[0] = lpcArg0;
     lpcRequest.lpcArgs[1] = lpcArg1;
 
-    memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
-    memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
+    memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
     ClientInfo *cli = malloc(sizeof(ClientInfo));
     cli->pid = getpid();
@@ -342,7 +342,7 @@ int MakeDirectory(char *path, int mode) {
     LpcResponse lpcResponse;
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
-    memcpy(&lpcResponse, serverShmaddr, sizeof(LpcResponse));
+    memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
     return atoi(lpcResponse.responseData);
 }
 
@@ -362,8 +362,8 @@ int RemoveDirectory(char *path) {
     lpcRequest.numArg = 1;
     lpcRequest.lpcArgs[0] = lpcArg0;
 
-    memset(clientShmaddr, 0x00, sizeof(clientShmaddr)); // 내용 초기화
-    memcpy(clientShmaddr, &lpcRequest, sizeof(lpcRequest));
+    memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
+    memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
     ClientInfo *cli = malloc(sizeof(ClientInfo));
     cli->pid = getpid();
@@ -378,7 +378,7 @@ int RemoveDirectory(char *path) {
     LpcResponse lpcResponse;
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
-    memcpy(&lpcResponse, serverShmaddr, sizeof(LpcResponse));
+    memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
 
     return atoi(lpcResponse.responseData);
 }

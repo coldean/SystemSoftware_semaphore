@@ -21,13 +21,13 @@ char RES_SEM[] = "res_sem_";
 char REQ_SEG[] = "req_seg_";
 char RES_SEG[] = "res_seg_";
 
-key_t clientKey;
-key_t serverKey;
+key_t requestKey;
+key_t responseKey;
 key_t ci;
-int clientShmid;
-int *clientShmaddr;
-int serverShmid;
-int *serverShmaddr;
+int requestShmid;
+int *requestShmaddr;
+int responseShmid;
+int *responseShmaddr;
 int ciid;
 int *ciaddr;
 sem_t *reqSem, *resSem;
@@ -46,12 +46,12 @@ void Init(void)
     sprintf(serverSeg, "%s%d", RES_SEG, pidIndex);
     sprintf(clientSem, "%s%d", REQ_SEM, pidIndex);
     printf("serverSeg : %s\n", serverSeg);
-    serverKey = __makeKeyByName(serverSeg);
+    responseKey = __makeKeyByName(serverSeg);
 
-    serverShmid = shmget(serverKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
+    responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
     printf("get good\n");
-    // shmctl(serverShmid, IPC_RMID, NULL);
-    serverShmaddr = shmat(serverShmid, NULL, 0);
+    // shmctl(responseShmid, IPC_RMID, NULL);
+    responseShmaddr = shmat(responseShmid, NULL, 0);
 
     // reqSem = sem_open(REQ_SEM, O_CREAT, 0644, 0);
     // resSem = sem_open(clientSem, 0, 0644, 1);
@@ -73,9 +73,9 @@ int OpenFile(char *path, int flag, int clientPid) {
     lpcResponse.responseData[0] = fd;
     sprintf(lpcResponse.responseData, "%d", fd);
 
-    memset(serverShmaddr, 0x00, MAX_SHM_SIZE);
+    memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
     printf("memset good\n");
-    memcpy(serverShmaddr, &lpcResponse, sizeof(lpcResponse));
+    memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
     printf("memcpy good\n");
 
     return fd;
@@ -98,8 +98,8 @@ int ReadFile(int fd, int readCount, int clientPid) {
     lpcResponse.responseSize = rsize;
     strcpy(lpcResponse.responseData, buf);
 
-    memset(serverShmaddr, 0x00, MAX_SHM_SIZE);
-    memcpy(serverShmaddr, &lpcResponse, sizeof(lpcResponse));
+    memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
+    memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
 
     return rsize;
 }
@@ -119,8 +119,8 @@ int WriteFile(int fd, char *pBuf, int writeCount, int clientPid) {
     lpcResponse.responseData[0] = wsize;
     sprintf(lpcResponse.responseData, "%d", wsize);
 
-    memset(serverShmaddr, 0x00, MAX_SHM_SIZE);
-    memcpy(serverShmaddr, &lpcResponse, sizeof(lpcResponse));
+    memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
+    memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
 
     return wsize;
 }
@@ -140,8 +140,8 @@ off_t SeekFile(int fd, off_t offset, int whence, int clientPid) {
     lpcResponse.responseData[0] = offs;
     sprintf(lpcResponse.responseData, "%ld", offs);
 
-    memset(serverShmaddr, 0x00, MAX_SHM_SIZE);
-    memcpy(serverShmaddr, &lpcResponse, sizeof(lpcResponse));
+    memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
+    memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
 
     return offs;
 }
@@ -161,8 +161,8 @@ int CloseFile(int fd, int clientPid) {
     lpcResponse.responseData[0] = k;
     sprintf(lpcResponse.responseData, "%d", k);
 
-    memset(serverShmaddr, 0x00, MAX_SHM_SIZE);
-    memcpy(serverShmaddr, &lpcResponse, sizeof(lpcResponse));
+    memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
+    memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
 
     return k;
 }
@@ -182,8 +182,8 @@ int MakeDirectory(char *path, int mode, int clientPid) {
     lpcResponse.responseData[0] = k;
     sprintf(lpcResponse.responseData, "%d", k);
 
-    memset(serverShmaddr, 0x00, MAX_SHM_SIZE);
-    memcpy(serverShmaddr, &lpcResponse, sizeof(lpcResponse));
+    memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
+    memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
 
     return k;
 }
@@ -203,8 +203,8 @@ int RemoveDirectory(char *path, int clientPid) {
     lpcResponse.responseData[0] = k;
     sprintf(lpcResponse.responseData, "%d", k);
 
-    memset(serverShmaddr, 0x00, MAX_SHM_SIZE);
-    memcpy(serverShmaddr, &lpcResponse, sizeof(lpcResponse));
+    memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
+    memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
 
     return k;
 }
