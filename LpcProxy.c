@@ -69,7 +69,7 @@ void Init(void) {
     responseShmaddr = shmat(responseShmid, NULL, 0);
 
     ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0666);
-    ciaddr = shmat(ciid, NULL, 0);
+    pClientInfo = shmat(ciid, NULL, 0);
 
     reqSem = sem_open(REQ_SEM, 0, 0644, 0);
     resSem = sem_open(responseSem, O_CREAT, 0644, 0);
@@ -105,15 +105,16 @@ int OpenFile(char *path, int flags) {
     memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
     printf("memcpy good\n");
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
     // ClientInfo cli;
     // cli.pid = getpid();
     // cli.isRequested = 1;
 
     printf("malloc good\n");
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    pClientInfo[pidIndex].isRequested = 1;
     // memcpy(ciaddr + 8 * pidIndex, &cli, sizeof(ClientInfo));
 
     printf("memcpy2 good\n");
@@ -162,11 +163,13 @@ int ReadFile(int fd, void *pBuf, int size) {
     memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
     printf("2 good \n");
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
 
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    pClientInfo[pidIndex].isRequested = 1;
+
     printf("3 good \n");
 
     sem_post(reqSem);
@@ -214,11 +217,12 @@ int WriteFile(int fd, void *pBuf, int size) {
     memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
     memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
 
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    pClientInfo[pidIndex].isRequested = 1;
 
     sem_post(reqSem);
 
@@ -264,11 +268,12 @@ off_t SeekFile(int fd, off_t offset, int whence) {
     memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
     memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
 
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    pClientInfo[pidIndex].isRequested = 1;
 
     sem_post(reqSem);
 
@@ -307,11 +312,12 @@ int CloseFile(int fd) {
     memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
     memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
 
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    pClientInfo[pidIndex].isRequested = 1;
 
     sem_post(reqSem);
 
@@ -352,11 +358,12 @@ int MakeDirectory(char *path, int mode) {
     memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
     memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
 
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    pClientInfo[pidIndex].isRequested = 1;
 
     sem_post(reqSem);
 
@@ -393,11 +400,12 @@ int RemoveDirectory(char *path) {
     memset(requestShmaddr, 0x00, sizeof(requestShmaddr)); // 내용 초기화
     memcpy(requestShmaddr, &lpcRequest, sizeof(lpcRequest));
 
-    ClientInfo *cli = malloc(sizeof(ClientInfo));
-    cli->pid = getpid();
-    cli->isRequested = 1;
+    // ClientInfo *cli = malloc(sizeof(ClientInfo));
+    // cli->pid = getpid();
+    // cli->isRequested = 1;
 
-    memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    // memcpy(ciaddr + 8 * pidIndex, cli, sizeof(ClientInfo));
+    pClientInfo[pidIndex].isRequested = 1;
 
     sem_post(reqSem);
 

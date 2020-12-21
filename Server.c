@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <error.h>
 
 #define MAX_SHM_SIZE 512
 
@@ -46,9 +47,9 @@ int main(void) {
     signal(SIGINT, signalHandler);
 
     ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0666);
-    ciaddr = shmat(ciid, NULL, 0);
+    pClientInfo = shmat(ciid, NULL, 0);
     printf("ci success\n");
-    memset(ciaddr, 0x00, CLIENT_NUM_MAX * 8);
+    memset(pClientInfo, 0x00, CLIENT_NUM_MAX * 8);
     printf("ci memset ok\n");
     reqSem = sem_open(REQ_SEM_, O_CREAT , 0644, 0);
     printf("reqsem made ok\n");
@@ -75,19 +76,19 @@ int main(void) {
 
         addrcount = 0;
         while (1) {
-            ClientInfo check;
-            memcpy(&check, ciaddr + addrcount, 8);
+            // ClientInfo check;
+            // memcpy(&check, ciaddr + addrcount, 8);
             printf("memcpy good, %d\n", addrcount);
 
-            if (check.isRequested == 1) {
-                ci_clientpid = check.pid;
+            if (pClientInfo[addrcount].isRequested == 1) {
+                ci_clientpid = pClientInfo->pid;
                 break;
             }
 
-            if (addrcount == CLIENT_NUM_MAX * 8) {
-                printf("Error! no request\n");
+            if (addrcount > CLIENT_NUM_MAX) {
+                perror("Error! no request\n");
             }
-            addrcount += 8;
+            addrcount += 1;
         }
         printf("addrcount : %d", addrcount);
         printf("client pid : %d", ci_clientpid);
@@ -104,10 +105,11 @@ int main(void) {
         responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
         responseShmaddr = shmat(responseShmid, NULL, 0);
 
-        ClientInfo initCi; // isrequest 0으로 초기화
-        initCi.pid = ci_clientpid;
-        initCi.isRequested = 0;
-        memcpy(ciaddr + addrcount, &initCi, 8);
+        // ClientInfo initCi; // isrequest 0으로 초기화
+        // initCi.pid = ci_clientpid;
+        // initCi.isRequested = 0;
+        // memcpy(ciaddr + addrcount, &initCi, 8);
+        pClientInfo[addrcount].isRequested = 0;
 
         resSem = sem_open(responseSem, O_CREAT, 0644, 0);	// client에서 받는 과정
 
