@@ -32,6 +32,8 @@ int ciid;
 int *ciaddr;
 sem_t *reqSem, *resSem;
 
+char responseSem[15];
+
 int pidIndex;
 
 void Init(void) {
@@ -125,6 +127,9 @@ int OpenFile(char *path, int flags) {
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
 
+    sem_close(resSem);
+    sem_unlink(responseSem);
+
     int a = atoi(lpcResponse.responseData);
     return a;
 }
@@ -175,11 +180,15 @@ int ReadFile(int fd, void *pBuf, int size) {
 
     strcpy(pBuf, lpcResponse.responseData);
 
+    sem_close(resSem);
+    sem_unlink(responseSem);
+
     return lpcResponse.responseSize;
 }
 
 int WriteFile(int fd, void *pBuf, int size) {
     Init();
+    printf("write init good \n");
 
     LpcRequest lpcRequest;
     LpcArg lpcArg0, lpcArg1, lpcArg2;
@@ -219,11 +228,16 @@ int WriteFile(int fd, void *pBuf, int size) {
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
+
+    sem_close(resSem);
+    sem_unlink(responseSem);
+
     return atoi(lpcResponse.responseData);
 }
 
 off_t SeekFile(int fd, off_t offset, int whence) {
     Init();
+    printf("seek init good \n");
 
     LpcRequest lpcRequest;
     LpcArg lpcArg0, lpcArg1, lpcArg2;
@@ -265,11 +279,16 @@ off_t SeekFile(int fd, off_t offset, int whence) {
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
     int a = atoi(lpcResponse.responseData);
+
+    sem_close(resSem);
+    sem_unlink(responseSem);
+
     return (off_t)a;
 }
 
 int CloseFile(int fd) {
     Init();
+    printf("close init good \n");
 
     LpcRequest lpcRequest;
     LpcArg lpcArg0;
@@ -303,11 +322,15 @@ int CloseFile(int fd) {
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
 
+    sem_close(resSem);
+    sem_unlink(responseSem);
+
     return atoi(lpcResponse.responseData);
 }
 
 int MakeDirectory(char *path, int mode) {
     Init();
+    printf("mkdir init good \n");
 
     LpcRequest lpcRequest;
     LpcArg lpcArg0, lpcArg1;
@@ -343,11 +366,16 @@ int MakeDirectory(char *path, int mode) {
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
+
+    sem_close(resSem);
+    sem_unlink(responseSem);
+
     return atoi(lpcResponse.responseData);
 }
 
 int RemoveDirectory(char *path) {
     Init();
+    printf("rmdir init good \n");
 
     LpcRequest lpcRequest;
     LpcArg lpcArg0;
@@ -379,6 +407,9 @@ int RemoveDirectory(char *path) {
     memset(&lpcResponse, 0x00, sizeof(LpcResponse));
 
     memcpy(&lpcResponse, responseShmaddr, sizeof(LpcResponse));
+
+    sem_close(resSem);
+    sem_unlink(responseSem);
 
     return atoi(lpcResponse.responseData);
 }

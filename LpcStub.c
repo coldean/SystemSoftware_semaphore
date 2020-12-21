@@ -58,6 +58,7 @@ void Init(void)
 }
 
 int OpenFile(char *path, int flag, int clientPid) {
+    printf("open File in\n");
     pidIndex = clientPid % 1000;
     Init();
     printf("init good");
