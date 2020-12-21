@@ -33,6 +33,8 @@ int ciid = 0;
 int *ciaddr = NULL;
 sem_t *reqSem, *resSem;
 
+char responseSem[15];
+
 int main(void) {
     long clientPid;
     LpcService lpcService;
@@ -51,7 +53,7 @@ int main(void) {
     printf("ci success\n");
     memset(pClientInfo, 0x00, CLIENT_NUM_MAX * 8);
     printf("ci memset ok\n");
-    reqSem = sem_open(REQ_SEM_, O_CREAT , 0644, 0);
+    reqSem = sem_open(REQ_SEM_, O_CREAT, 0644, 0);
     printf("reqsem made ok\n");
     int addrcount = 0;
 
@@ -111,9 +113,10 @@ int main(void) {
         // memcpy(ciaddr + addrcount, &initCi, 8);
         pClientInfo[addrcount].isRequested = 0;
 
-        resSem = sem_open(responseSem, O_CREAT, 0644, 0);	// client에서 받는 과정
+        resSem =
+            sem_open(responseSem, O_CREAT, 0644, 0); // client에서 받는 과정
 
-        memset(lpcRequest, 0x00, sizeof(LpcRequest));	// 이전 정보 초기화
+        memset(lpcRequest, 0x00, sizeof(LpcRequest)); // 이전 정보 초기화
         // count++;
 
         // char str[50] = {
@@ -184,7 +187,7 @@ void signalHandler(int signum) {
         sem_close(resSem);
 
         sem_unlink(REQ_SEM_);
-        sem_unlink(RES_SEM_);
+        sem_unlink(responseSem);
 
         exit(0);
     }

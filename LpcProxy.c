@@ -56,9 +56,7 @@ void Init(void) {
     printf("requestSeg : %s\n", requestSeg);
     requestKey = __makeKeyByName(requestSeg);
     responseKey = __makeKeyByName(responseSeg);
-    ci = ftok("ci_set", 0);
-
-
+    ci = __makeKeyByName("ci_set");
 
     requestShmid = shmget(requestKey, MAX_SHM_SIZE, IPC_CREAT | 0666);
     // shmctl(requestShmid, IPC_RMID, NULL);
