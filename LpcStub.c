@@ -45,23 +45,15 @@ void Init(void)
 
     sprintf(serverSeg, "%s%d", RES_SEG, pidIndex);
     sprintf(clientSem, "%s%d", REQ_SEM, pidIndex);
-    printf("serverSeg : %s\n", serverSeg);
     responseKey = __makeKeyByName(serverSeg);
 
     responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0777);
-    printf("get good\n");
-    // shmctl(responseShmid, IPC_RMID, NULL);
     responseShmaddr = shmat(responseShmid, NULL, 0);
-
-    // reqSem = sem_open(REQ_SEM, O_CREAT, 0644, 0);
-    // resSem = sem_open(clientSem, 0, 0644, 1);
 }
 
 int OpenFile(char *path, int flag, int clientPid) {
-    printf("open File in\n");
     pidIndex = clientPid % 1000;
     Init();
-    printf("init good");
 
     int fd = open(path, flag, 0666);    // open
 
@@ -75,9 +67,7 @@ int OpenFile(char *path, int flag, int clientPid) {
     sprintf(lpcResponse.responseData, "%d", fd);
 
     memset(responseShmaddr, 0x00, MAX_SHM_SIZE);
-    printf("memset good\n");
     memcpy(responseShmaddr, &lpcResponse, sizeof(lpcResponse));
-    printf("memcpy good\n");
 
     return fd;
 }

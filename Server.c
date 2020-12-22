@@ -51,11 +51,8 @@ int main(void) {
 
     ciid = shmget(ci, CLIENT_NUM_MAX * 8, IPC_CREAT | 0777);
     pClientInfo = shmat(ciid, NULL, 0);
-    printf("ci success\n");
     memset(pClientInfo, 0x00, CLIENT_NUM_MAX * 8);
-    printf("ci memset ok\n");
     reqSem = sem_open(REQ_SEM_, O_CREAT, 0777, 0);
-    printf("reqsem made ok\n");
     int addrcount = 0;
 
     int ci_clientpid = 0;
@@ -65,7 +62,6 @@ int main(void) {
     while (1) {
 
         sem_wait(reqSem);
-        printf("got req\n");
 
         char responseSeg[15] = {
             '\0',
@@ -79,10 +75,6 @@ int main(void) {
 
         addrcount = 0;
         while (1) {
-            // ClientInfo check;
-            // memcpy(&check, ciaddr + addrcount, 8);
-            printf("memcpy good, %d\n", addrcount);
-
             if (pClientInfo[addrcount].isRequested == 1) {
                 ci_clientpid = pClientInfo->pid;
                 break;
@@ -93,8 +85,6 @@ int main(void) {
             }
             addrcount += 1;
         }
-        printf("addrcount : %d", addrcount);
-        printf("client pid : %d", ci_clientpid);
 
         pidIndex = ci_clientpid % 1000;
         sprintf(responseSeg, "%s%d", RES_SEG_, pidIndex);
@@ -108,28 +98,17 @@ int main(void) {
         responseShmid = shmget(responseKey, MAX_SHM_SIZE, IPC_CREAT | 0777);
         responseShmaddr = shmat(responseShmid, NULL, 0);
 
-        // ClientInfo initCi; // isrequest 0으로 초기화
-        // initCi.pid = ci_clientpid;
-        // initCi.isRequested = 0;
-        // memcpy(ciaddr + addrcount, &initCi, 8);
         pClientInfo[addrcount].isRequested = 0;
 
         resSem =
             sem_open(responseSem, O_CREAT, 0777, 0); // client에서 받는 과정
 
         memset(lpcRequest, 0x00, sizeof(LpcRequest)); // 이전 정보 초기화
-        // count++;
-
-        // char str[50] = {
-        //     '\0',
-        // };
         memcpy(lpcRequest, requestShmaddr, sizeof(LpcRequest));
         clientPid = lpcRequest->pid;
         lpcService = lpcRequest->service;
         numArg = lpcRequest->numArg;
         lpcArgs = lpcRequest->lpcArgs;
-
-        printf("from client : %ld, %d\n", clientPid, ci_clientpid);
 
         int fd, size, a;
 
@@ -166,14 +145,8 @@ int main(void) {
             break;
         }
 
-        // memset(clientShmaddr, 0x00, sizeof(clientShmaddr));
-        // printf("memset seccess\n");
-        // memcpy(clientShmaddr, &count, sizeof(int));
-        // printf("memcpy success\n");
-        printf("before semPost\n");
         sem_post(resSem);
         sem_close(resSem);
-        printf("sempost good\n");
     }
 
     return 0;
